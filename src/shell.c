@@ -7,40 +7,38 @@
 #include <string.h>
 
 #include "model/shell_command.h"
+#include "app.h"
 #include "cmd_identifier.h"
 #include "unix_process_adapter.h"
 
-#define INPUT_SIZE 256
+void printHelp() {
+
+  printf("\nAvailable general commands: [help | exit]\n");
+  printf("Available process handling commands: [fg | bg | kill | jobs | \".. & .. &\"]\n");
+}
 
 void printIntro() {
-  printf("intro");
-  // TODO
-}
 
-void printHelp() {
-  printf("help");
-  // TODO
-}
-
-void doCd(char *rawInput) {
-  // Forming location string
-  char dir[strlen(rawInput) - 3];
-  for (int i=3,j=0 ; i<strlen(rawInput) ; i++,j++) { dir[j] = rawInput[i]; }
-
-  // TODO
-  printf("Going to %s", dir);
+  printf("\n\nWelcome to background tasks shell!\n");
+  printHelp();
+  printf("\n");
 }
 
 void exitShell() {
+
   printf("\n\nBye.\n");
   exit(EXIT_SUCCESS);
 }
 
+void exitError(const char *message) {
+
+  perror(message);
+  exit(EXIT_FAILURE);
+}
+
 void performCommand(ShellCommand command, char *rawInput) {
+
   switch(command) {
-    case CD:
-      doCd(rawInput);
-      break;
     case HELP:
     case UNKNOWN:
       printHelp();
@@ -76,6 +74,10 @@ void startShell() {
       } else if (readChar == '\n') {
 
         if (strlen(shellInput) > 0) {
+          // Properly ending the input string
+          shellInput[inputCounter] = '\0';
+
+          // Performing the command
           ShellCommand shellCommand = identifyCommand(shellInput);
           performCommand(shellCommand, shellInput);
         }

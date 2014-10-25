@@ -11,7 +11,6 @@ typedef enum {
   // Generic commands
   EXIT,
   HELP,
-  CD,
   UNKNOWN,
 
   // Process handling
