@@ -7,16 +7,16 @@
 #define TRUE 1
 #define FALSE 0
 #define PROCESSES_MAX 8
+#define PROCESS_NOT_FOUND -1
 
-ShellProcess processes[PROCESSES_MAX];
+Process processes[PROCESSES_MAX];
 
-int findByPgid(pid_t givenPgid) {
+int findByPid(pid_t givenPid) {
 
-  int idInArray = -1;
-
+  int idInArray = PROCESS_NOT_FOUND;
   int i;
   for (i=0 ; i<processesSize ; i++) {
-    if (processes[i].pgid == givenPgid) {
+    if (processes[i].pid == givenPid) {
       idInArray = i;
       break;
     }
@@ -25,17 +25,22 @@ int findByPgid(pid_t givenPgid) {
   return idInArray;
 }
 
-void addToProcesses(char *command, pid_t pgid, ProcessRegime regime) {
+void addToProcesses(char *command, pid_t pid, ProcessState state) {
 
   if (processesSize == PROCESSES_MAX) {
     perror("Maximum number of processes has been reached!");
   }
 
+  // Finding the id of list where to write the new process at
   int writeAt = processesSize;
+
+  // Initializing parameters
   processes[writeAt].id = writeAt;
   strcpy(processes[writeAt].command, command);
-  processes[writeAt].pgid = pgid;
-  processes[writeAt].regime = regime;
+  processes[writeAt].pid = pid;
+  processes[writeAt].state = state;
+
+  // Incrementing the total amount
   processesSize++;
 }
 
@@ -72,25 +77,25 @@ void childSignalHandler(int signal) {
   int termStatus;
 
   // Waits for the child process
-  // '-1' means that we are waiting for any status
+  // '-1' in the argument of 'waitpid' means that we are waiting for any status
   // WNOHANG - returns immediately if no child has exited
   // WUNTRACED - returns if a child has stopped
   pid = waitpid(-1, &termStatus, WUNTRACED | WNOHANG);
 
-  // If parent or invalid PID was received - stopping execution of this function
+  // If parent or invalid PID was received - ignoring later execution
   if (pid <= 0) {
     return;
   }
 
-  // We are interested only about processes which belong to our shell
-  int processNo = findByPgid(pid);
-  if (processNo == -1) {
+  // We are interested only about processes which belong to our shell, otherwise it is ignored
+  int processNo = findByPid(pid);
+  if (processNo == PROCESS_NOT_FOUND) {
     return;
   }
 
   // Query status to see if a child process has ended normally
   if (WIFEXITED(termStatus)) {
-    if (processes[processNo].regime == BG) {
+    if (processes[processNo].state == BG) {
       printf("\n[%d] '%s' - DONE\n", processes[processNo].id, processes[processNo].command);
       removeFromProcesses(processNo);
       return;
@@ -104,12 +109,12 @@ void childSignalHandler(int signal) {
 
   // Returns non zero if child process has stopped
   } else if (WIFSTOPPED(termStatus)) {
-    tcsetpgrp(STDIN_FILENO, processes[processNo].pgid);
-    processes[processNo].regime = WAITING;
+    tcsetpgrp(STDIN_FILENO, processes[processNo].pid);
+    processes[processNo].state = WAITING;
     printf("\n[%d] '%s' - STOPPED\n", processes[processNo].id, processes[processNo].command);
     return;
 
-  // Other
+  // In other cases, child process should also be removed
   } else {
     removeFromProcesses(processNo);
     return;
@@ -120,8 +125,8 @@ void waitForProcess(int processNumber) {
 
   int termStatus;
 
-  while(waitpid(processes[processNumber].pgid, &termStatus, WNOHANG) == 0) {
-    if (processes[processNumber].regime == WAITING) {
+  for (;waitpid(processes[processNumber].pid, &termStatus, WNOHANG) == 0;) {
+    if (processes[processNumber].state == WAITING) {
       return;
     }
   }
@@ -129,47 +134,59 @@ void waitForProcess(int processNumber) {
   removeFromProcesses(processNumber);
 }
 
-void executeProcess(ProcessRegime regime, int processNumber, int backFromSuspension) {
+void executeProcess(ProcessState state, int processNumber, int backFromSuspension) {
 
-  if (regime == WAITING) {
-    perror("Unexpected regime");
+  if (state == WAITING) {
+    exitError("Unexpected state");
   }
 
-  processes[processNumber].regime = regime;
+  // Changing the state of the process
+  processes[processNumber].state = state;
 
-  if (regime == FG) {
-    tcsetpgrp(STDIN_FILENO, processes[processNumber].pgid);
+  // Making the process to be foreground process
+  if (state == FG) {
+    tcsetpgrp(STDIN_FILENO, processes[processNumber].pid);
   }
 
+  // In case we are getting process back from suspension, 'SIGCONT'
+  // i.e. continue signal is sent
   if (backFromSuspension == TRUE) {
-    if (kill(processes[processNumber].pgid, SIGCONT) < 0) {
+    if (kill(processes[processNumber].pid, SIGCONT) < 0) {
       perror("Failed to move process back from suspension!");
     }
   }
 
-  if (regime == FG) {
+  // If the process is executed in foreground, the parent (shell) process
+  // must wait for it to complete
+  if (state == FG) {
     waitForProcess(processNumber);
   }
 
+  // Making the shell process (set as 'commonGroupId') to be the one in the foreground again
   tcsetpgrp(STDIN_FILENO, commonGroupId);
 }
 
-void createNewProcess(char *command, ProcessRegime regime) {
+void createNewProcess(char *command, ProcessState state) {
+
+  if (strcmp(command, INVALID_STR_ARG) == 0) {
+    return;
+  }
 
   // Forking off to a child process
   pid_t pid;
   pid = fork();
 
-  // Handling failures
+  // If could not allocate enough memory to copy parent's page
   if (pid == EAGAIN) {
     perror("Error EAGAIN!");
     return;
 
+  // If could not allocate necessary kernel structures due to tight memory
   } else if (pid == ENOMEM) {
     perror("Error ENOMEM!");
     return;
 
-  // Child process state
+  // If we are in the child process state
   } else if (pid == 0) {
 
     // Setting signals to default behaviour
@@ -181,16 +198,16 @@ void createNewProcess(char *command, ProcessRegime regime) {
     // Adding handler for a child signal
     signal(SIGCHLD, &childSignalHandler);
 
-    // Becomming a session leader
+    // Joining an existing process group (or creating a new one)
     setpgid(pid, pid);
 
-    // Setting terminal foreground process group
-    if (regime == FG) {
+    // If foreground process is executed, moving the current process to the foreground of std in
+    if (state == FG) {
       tcsetpgrp(STDIN_FILENO, getpid());
 
-    // Informing user about a new background process
-    } else if (regime == BG) {;
-      printf("\n[%d] PID - %d\n", processesSize, (int) getpid());
+    // Informing user about a fresh background process
+    } else if (state == BG) {;
+      printf("\n[%d] %d\n", processesSize, (int) getpid());
     }
 
     // Forming the command string with it's arguments
@@ -210,6 +227,7 @@ void createNewProcess(char *command, ProcessRegime regime) {
     }
 
     // The ending of args must be NULL
+    // requirement from 'http://linux.die.net/man/3/execvp'
     cmdArgs = realloc(cmdArgs, sizeof(char*) * (tokenCounter + 1));
     cmdArgs[tokenCounter] = 0;
 
@@ -220,21 +238,21 @@ void createNewProcess(char *command, ProcessRegime regime) {
       perror(error);
     }
 
-    // Exiting the process
+    // Exiting the child process
     exit(EXIT_SUCCESS);
 
   // Parent process state
   } else {
 
-    // Setting the process group id to be as the forked one
+    // Creating a new process group (or joining an existing one)
     setpgid(pid, pid);
 
-    // Adding this process to the list
-    addToProcesses(command, pid, regime);
-    int processNumber = findByPgid(pid);
+    // Adding the new process to the list of shell processes
+    addToProcesses(command, pid, state);
+    int processNumber = findByPid(pid);
 
-    // Executing job
-    executeProcess(regime, processNumber, FALSE);
+    // Executing the job in provided 'state'
+    executeProcess(state, processNumber, FALSE);
   }
 }
 
@@ -243,9 +261,11 @@ void doInFg(int processNumber) {
    if (processNumber == INVALID_INT_ARG) {
      return;
 
-   } else if (processes[processNumber].regime == WAITING) {
+   // Getting the process back from 'stopped' state
+   } else if (processes[processNumber].state == WAITING) {
      executeProcess(FG, processNumber, TRUE);
 
+   // Simply moving the process to the foreground
    } else {
      executeProcess(FG, processNumber, FALSE);
    }
@@ -257,6 +277,7 @@ void doInBg(int processNumber) {
     return;
   }
 
+  // Moving process to background and to continue execution in there
   executeProcess(BG, processNumber, TRUE);
 }
 
@@ -265,6 +286,7 @@ void doJobs() {
   if (processesSize == 0) {
     printf("\nThere are no running jobs.\n");
 
+  // Printing current jobs
   } else {
     printf("\n");
 
@@ -272,15 +294,14 @@ void doJobs() {
     for (i=0 ; i<processesSize ; i++) {
       char *status;
 
-      if (processes[i].regime == BG) {
-        status = "background";
-      } else if (processes[i].regime == FG) {
-        status = "foreground";
+      if (processes[i].state == BG
+          || processes[i].state == FG) {
+        status = "Running";
       } else {
-        status = "waiting";
+        status = "Stopped";
       }
 
-      printf("[%d] '%s' (%s)\n", (int) processes[i].id, processes[i].command, status);
+      printf("[%d] %s\t\t%s\n", (int) processes[i].id, status, processes[i].command);
     }
   }
 }
@@ -290,14 +311,16 @@ void doKill(int processNumber) {
   if (processNumber == INVALID_INT_ARG) {
     return;
 
-  } else if (kill(processes[processNumber].pgid, SIGKILL) == -1) {
+  // Sending kill signal to the given process
+  } else if (kill(processes[processNumber].pid, SIGKILL) == -1) {
     perror("Failed to kill the process!");
   }
 }
 
-void executeShellCommand(ShellCommand shellCommand, char *shellInput) {
+void executeAppCommandInUnix(AppCommand appCommand, char *shellInput) {
 
-  switch(shellCommand) {
+  // Checking which app command should be executed in the adapter
+  switch(appCommand) {
     case FOREGROUND:
       doInFg(parseFgArgs(shellInput));
       break;

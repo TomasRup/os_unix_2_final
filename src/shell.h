@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "model/shell_command.h"
+#include "model/app_command.h"
 #include "app.h"
 #include "cmd_identifier.h"
 #include "unix_process_adapter.h"
@@ -36,7 +36,7 @@ void exitShell();
 void exitError(const char *message);
 
 /* Performs given command */
-void performCommand(ShellCommand command, char *rawInput);
+void performCommand(AppCommand command, char *rawInput);
 
 /* Initializes all of the settings for shell */
 void initShell();

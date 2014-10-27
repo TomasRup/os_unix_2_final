@@ -4,22 +4,29 @@
 
 #include "cmd_identifier.h"
 
-ShellCommand identifyCommand(char *input) {
+AppCommand identifyCommand(char *input) {
 
   if (strcmp(input, "exit") == 0) {
     return EXIT;
+
   } else if (strcmp(input, "help") == 0) {
     return HELP;
+
   } else if (strncmp(input, "fg", 2) == 0) {
     return FOREGROUND;
+
   } else if (strncmp(input, "bg", 2) == 0) {
     return BACKGROUND;
+
   } else if (strcmp(input, "jobs") == 0) {
     return JOBS;
+
   } else if (strncmp(input, "kill", 4) == 0) {
     return KILL;
+
   } else if (strstr(input, "&") != NULL && strlen(input) > 2) {
     return NEW_BG;
+
   } else {
     return NEW_FG;
   }
@@ -45,11 +52,13 @@ char *trim(char *data) {
 
 int parseFgArgs(char *rawInput) {
 
+  // Handling invalid input
   if (strlen(trim(rawInput)) == 2) {
     printf("Usage: fg [job number]\n");
     return INVALID_INT_ARG;
   }
 
+  // Taking the number out of command and parsing an integer
   char arg[INPUT_SIZE];
 
   int i;
@@ -64,12 +73,14 @@ int parseFgArgs(char *rawInput) {
 
 int parseBgArgs(char *rawInput) {
 
+  // Handling invalid input
   if (strlen(trim(rawInput)) == 2) {
     printf("Usage: bg [job number]\n");
     return INVALID_INT_ARG;
   }
 
-  char *arg = (char *)calloc(strlen(rawInput) - 3, sizeof(char));
+  // Taking the number out of command and parsing an integer
+  char arg[INPUT_SIZE];
 
   int i;
   int j;
@@ -82,12 +93,14 @@ int parseBgArgs(char *rawInput) {
 
 int parseKillArgs(char *rawInput) {
 
+  // Handling invalid input
   if (strlen(trim(rawInput)) == 2) {
     printf("Usage: kill [job number]\n");
     return INVALID_INT_ARG;
   }
 
-  char *arg = (char *)calloc(strlen(rawInput) - 5, sizeof(char));
+  // Taking the number out of command and parsing an integer
+  char arg[INPUT_SIZE];
 
   int i;
   int j;
@@ -99,6 +112,12 @@ int parseKillArgs(char *rawInput) {
 }
 
 char *parseNewBgProcessesArgs(char *rawInput) {
+
+  // Handling invalid input
+  if (strcmp("&", trim(rawInput)) == 0) {
+    printf("Usage: [unix command] &\n");
+    return INVALID_STR_ARG;
+  }
 
   // Removing '&' sign and trimming the whitespace
   char processString[INPUT_SIZE];

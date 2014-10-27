@@ -38,17 +38,19 @@ void exitError(const char *message) {
   exit(EXIT_FAILURE);
 }
 
-void performCommand(ShellCommand command, char *rawInput) {
+void performCommand(AppCommand command, char *rawInput) {
 
   switch(command) {
     case HELP:
       printHelp();
       break;
+
     case EXIT:
       exitShell();
       break;
+
     default:
-      executeShellCommand(command, rawInput);
+      executeAppCommandInUnix(command, rawInput);
   }
 }
 
@@ -105,8 +107,8 @@ void startShell() {
           shellInput[inputCounter] = '\0';
 
           // Performing the command
-          ShellCommand shellCommand = identifyCommand(shellInput);
-          performCommand(shellCommand, shellInput);
+          AppCommand appCommand = identifyCommand(shellInput);
+          performCommand(appCommand, shellInput);
           break;
 
         // Forming command

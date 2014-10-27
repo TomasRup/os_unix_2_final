@@ -6,18 +6,19 @@
 #define cmd_identifier_H
 
 #define INVALID_INT_ARG -1
+#define INVALID_STR_ARG "INVALID_STRING"
 
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "model/shell_command.h"
+#include "model/app_command.h"
 #include "app.h"
 #include "shell.h"
 
-/* Identifier what kind of shell command is the given input */
-ShellCommand identifyCommand(char *input);
+/* Identifier what kind of application command is the given input */
+AppCommand identifyCommand(char *input);
 
 /* Trims the whitespace from sides */
 char *trim(char *data);
