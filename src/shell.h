@@ -41,6 +41,9 @@ void performCommand(AppCommand command, char *rawInput);
 /* Initializes all of the settings for shell */
 void initShell();
 
+/* Prints a sign before each line */
+void promptPrefix();
+
 /* Starts shell. Returns exit code when completed */
 void startShell();
 

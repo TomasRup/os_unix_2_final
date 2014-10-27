@@ -54,7 +54,7 @@ int parseFgArgs(char *rawInput) {
 
   // Handling invalid input
   if (strlen(trim(rawInput)) == 2) {
-    printf("Usage: fg [job number]\n");
+    printf("Usage: fg [job number]\n\n");
     return INVALID_INT_ARG;
   }
 
@@ -75,7 +75,7 @@ int parseBgArgs(char *rawInput) {
 
   // Handling invalid input
   if (strlen(trim(rawInput)) == 2) {
-    printf("Usage: bg [job number]\n");
+    printf("Usage: bg [job number]\n\n");
     return INVALID_INT_ARG;
   }
 
@@ -95,7 +95,7 @@ int parseKillArgs(char *rawInput) {
 
   // Handling invalid input
   if (strlen(trim(rawInput)) == 2) {
-    printf("Usage: kill [job number]\n");
+    printf("Usage: kill [job number]\n\n");
     return INVALID_INT_ARG;
   }
 

@@ -21,20 +21,20 @@ void printHelp() {
 
 void printIntro() {
 
-  printf("\n\nWelcome to background tasks shell!\n(c) Tomas Petras Rupsys\n");
+  printf("\n\n\t\tWelcome to the background tasks shell app!\n\t\t\t(c) Tomas Petras Rupsys\n\n");
   printHelp();
   printf("\n");
 }
 
 void exitShell() {
 
-  printf("\n\nBye.\n");
+  printf("Bye.\n\n");
   exit(EXIT_SUCCESS);
 }
 
 void exitError(const char *message) {
 
-  perror(message);
+  printf("%s\n\n", message);
   exit(EXIT_FAILURE);
 }
 
@@ -72,6 +72,23 @@ void initShell() {
   signal(SIGCHLD, &childSignalHandler);
 }
 
+void promptPrefix() {
+  // Getting user name
+  char userName[INPUT_SIZE];
+  getlogin_r(userName, INPUT_SIZE);
+
+  // Getting host name
+  char hostName[INPUT_SIZE];
+  gethostname(hostName, INPUT_SIZE);
+
+  // Getting current directory
+  char currentDirectory[INPUT_SIZE];
+  getcwd(currentDirectory, INPUT_SIZE);
+
+  // Printing prefix
+  printf("%s@%s:%s> ", userName, hostName, currentDirectory);
+}
+
 void startShell() {
 
   initShell();
@@ -80,7 +97,7 @@ void startShell() {
   char initialInputChar = '\0';
   while (initialInputChar != EOF) {
 
-    printf(">> ");
+    promptPrefix();
     initialInputChar = getchar();
 
     // User hits enter
@@ -93,16 +110,21 @@ void startShell() {
 
     // User is typing a command
     } else {
+
+      // Adding the 'initialInputChar' as the first character of the command
       int inputCounter = 0;
       char shellInput[INPUT_SIZE];
       shellInput[inputCounter++] = initialInputChar;
 
+      // Waiting for more user input
       char tempChar;
+
       while (inputCounter < INPUT_SIZE) {
         tempChar = getchar();
 
         // User has finished typing command
         if (tempChar == '\n') {
+
           // Properly ending the input
           shellInput[inputCounter] = '\0';
 

@@ -28,7 +28,7 @@ int findByPid(pid_t givenPid) {
 void addToProcesses(char *command, pid_t pid, ProcessState state) {
 
   if (processesSize == PROCESSES_MAX) {
-    perror("Maximum number of processes has been reached!");
+    exitError("Maximum number of processes has been reached!");
   }
 
   // Finding the id of list where to write the new process at
@@ -236,6 +236,7 @@ void createNewProcess(char *command, ProcessState state) {
       char error[INPUT_SIZE];
       sprintf(error, "Command '%s' could not be executed", command);
       perror(error);
+      printf("\n");
     }
 
     // Exiting the child process
@@ -284,12 +285,10 @@ void doInBg(int processNumber) {
 void doJobs() {
 
   if (processesSize == 0) {
-    printf("\nThere are no running jobs.\n");
+    printf("There are no running jobs.\n\n");
 
   // Printing current jobs
   } else {
-    printf("\n");
-
     int i;
     for (i=0 ; i<processesSize ; i++) {
       char *status;
@@ -303,6 +302,7 @@ void doJobs() {
 
       printf("[%d] %s\t\t%s\n", (int) processes[i].id, status, processes[i].command);
     }
+    printf("\n");
   }
 }
 
