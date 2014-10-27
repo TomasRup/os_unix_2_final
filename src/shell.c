@@ -14,6 +14,7 @@ void printHelp() {
   printf("exit\t\t\t\texit from the application\n");
   printf("fg [job number]\t\t\tmoves the given job to execute in shell foreground\n");
   printf("bg [job number]\t\t\tmoves the given job to execute in shell background\n");
+  printf("kill [job number]\t\tkills the given shell job\n");
   printf("jobs\t\t\t\tshows a list of jobs which are in the background of this shell\n");
   printf("[unix command]\t\t\texecutes any UNIX command\n");
   printf("[unix command] &\t\texecutes any UNIX command in background\n");

@@ -4,6 +4,24 @@
 
 #include "cmd_identifier.h"
 
+// FIXME: possible memory leak with this implementation
+char *trim(char *data) {
+
+  int i = strlen(data) - 1;
+
+  // Right trim
+  while (isspace(data[i])) {
+    data[i--] = '\0';
+  }
+
+  // Left trim
+  while (isspace(*data)) {
+    data++;
+  }
+
+  return data;
+}
+
 AppCommand identifyCommand(char *input) {
 
   if (strcmp(input, "exit") == 0) {
@@ -30,24 +48,6 @@ AppCommand identifyCommand(char *input) {
   } else {
     return NEW_FG;
   }
-}
-
-// FIXME: possible memory leak with this implementation
-char *trim(char *data) {
-
-  int i = strlen(data) - 1;
-
-  // Right trim
-  while (isspace(data[i])) {
-    data[i--] = '\0';
-  }
-
-  // Left trim
-  while (isspace(*data)) {
-    data++;
-  }
-
-  return data;
 }
 
 int parseFgArgs(char *rawInput) {
@@ -115,7 +115,29 @@ char *parseNewBgProcessesArgs(char *rawInput) {
 
   // Handling invalid input
   if (strcmp("&", trim(rawInput)) == 0) {
-    printf("Usage: [unix command] &\n");
+    printf("Usage: [unix command] &\n\n");
+    return INVALID_STR_ARG;
+  }
+
+  // In case the last character of the command is not '&' - operation is not valid
+  int lastCharacterNumber = strlen(trim(rawInput)) - 1;
+  if (trim(rawInput)[lastCharacterNumber] != '&') {
+    printf("Such operation is not permitted! '&' sign should be at the end of command\n\n");
+    return INVALID_STR_ARG;
+  }
+
+  // Counts occurrences of '&' sign
+  int andSignCounter = 0;
+  int i;
+  for (i=0 ; i<strlen(rawInput) ; i++) {
+    if (rawInput[i] == '&') {
+      andSignCounter++;
+    }
+  }
+
+  // In case there are more than one '&' - operation is not permitted
+  if (andSignCounter > 1) {
+    printf("Currently application supports execution of only one background task at time\n\n");
     return INVALID_STR_ARG;
   }
 

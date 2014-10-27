@@ -17,11 +17,11 @@
 #include "app.h"
 #include "shell.h"
 
-/* Identifier what kind of application command is the given input */
-AppCommand identifyCommand(char *input);
-
 /* Trims the whitespace from sides */
 char *trim(char *data);
+
+/* Identifier what kind of application command is the given input */
+AppCommand identifyCommand(char *input);
 
 /* Parses an argument required for foreground command */
 int parseFgArgs(char *rawInput);
