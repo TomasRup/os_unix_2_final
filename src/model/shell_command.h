@@ -11,14 +11,14 @@ typedef enum {
   // Generic commands
   EXIT,
   HELP,
-  UNKNOWN,
 
   // Process handling
   FOREGROUND,
   BACKGROUND,
   JOBS,
   KILL,
-  NEW
+  NEW_BG,
+  NEW_FG
 
 } ShellCommand;
 

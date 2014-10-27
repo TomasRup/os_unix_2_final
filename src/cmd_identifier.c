@@ -2,13 +2,7 @@
 //      Tomas Petras Rupsys
 //
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "model/shell_command.h"
-#include "app.h"
-#include "shell.h"
+#include "cmd_identifier.h"
 
 ShellCommand identifyCommand(char *input) {
 
@@ -16,65 +10,105 @@ ShellCommand identifyCommand(char *input) {
     return EXIT;
   } else if (strcmp(input, "help") == 0) {
     return HELP;
-  } else if (strncmp(input, "fg", 2) == 0 && strlen(input) > 3) {
+  } else if (strncmp(input, "fg", 2) == 0) {
     return FOREGROUND;
-  } else if (strncmp(input, "bg", 2) == 0 && strlen(input) > 3) {
+  } else if (strncmp(input, "bg", 2) == 0) {
     return BACKGROUND;
   } else if (strcmp(input, "jobs") == 0) {
     return JOBS;
-  } else if (strncmp(input, "kill", 4) == 0 && strlen(input) > 5) {
+  } else if (strncmp(input, "kill", 4) == 0) {
     return KILL;
-  } else if (strcmp(input, " &") > 0 && strlen(input) > 2) {
-    return NEW;
+  } else if (strstr(input, "&") != NULL && strlen(input) > 2) {
+    return NEW_BG;
   } else {
-    return UNKNOWN;
+    return NEW_FG;
   }
+}
+
+// FIXME: possible memory leak with this implementation
+char *trim(char *data) {
+
+  int i = strlen(data) - 1;
+
+  // Right trim
+  while (isspace(data[i])) {
+    data[i--] = '\0';
+  }
+
+  // Left trim
+  while (isspace(*data)) {
+    data++;
+  }
+
+  return data;
 }
 
 int parseFgArgs(char *rawInput) {
 
-  char *arg = (char *)calloc(strlen(rawInput) - 3, sizeof(char));
-  for (int i=3,j=0 ; i<strlen(rawInput) ; i++,j++) { arg[j] = rawInput[i]; }
-  return atoi(arg);
+  if (strlen(trim(rawInput)) == 2) {
+    printf("Usage: fg [job number]\n");
+    return INVALID_INT_ARG;
+  }
+
+  char arg[INPUT_SIZE];
+
+  int i;
+  int j;
+  for (i=3,j=0 ; i<strlen(rawInput) ; i++,j++) {
+    arg[j] = rawInput[i];
+  }
+
+  int fgArgument = atoi(arg);
+  return fgArgument;
 }
 
 int parseBgArgs(char *rawInput) {
 
+  if (strlen(trim(rawInput)) == 2) {
+    printf("Usage: bg [job number]\n");
+    return INVALID_INT_ARG;
+  }
+
   char *arg = (char *)calloc(strlen(rawInput) - 3, sizeof(char));
-  for (int i=3,j=0 ; i<strlen(rawInput) ; i++,j++) { arg[j] = rawInput[i]; }
+
+  int i;
+  int j;
+  for (i=3,j=0 ; i<strlen(rawInput) ; i++,j++) {
+    arg[j] = rawInput[i];
+  }
+
   return atoi(arg);
 }
 
 int parseKillArgs(char *rawInput) {
 
+  if (strlen(trim(rawInput)) == 2) {
+    printf("Usage: kill [job number]\n");
+    return INVALID_INT_ARG;
+  }
+
   char *arg = (char *)calloc(strlen(rawInput) - 5, sizeof(char));
-  for (int i=5,j=0 ; i<strlen(rawInput) ; i++,j++) { arg[j] = rawInput[i]; }
+
+  int i;
+  int j;
+  for (i=5,j=0 ; i<strlen(rawInput) ; i++,j++) {
+    arg[j] = rawInput[i];
+  }
+
   return atoi(arg);
 }
 
-char **parseNewProcessesArgs(char *rawInput) {
+char *parseNewBgProcessesArgs(char *rawInput) {
 
-  // Counting occurrences of '&' sign
-  int occ = 0;
-  for (int j=0 ; j<strlen(rawInput) ; j++) { if (rawInput[j] == '&') { occ++; }}
+  // Removing '&' sign and trimming the whitespace
+  char processString[INPUT_SIZE];
+  strcpy(processString, trim(rawInput));
+  processString[strlen(processString) - 1] = 0;
+  return trim(processString);
+}
 
-  // Forming an array of strings
-  char **processes = malloc(sizeof(char *) * occ * INPUT_SIZE);
+char *parseNewFgProcessesArgs(char *rawInput) {
 
-  int i = 0;
-  char *tempString = strtok(rawInput, " &");
-
-  while (tempString != NULL) {
-    // FIXME: improve memory allocation to processes
-    if (i == sizeof(processes)) {
-      exitError("Memory allocation maximum has been reached for commands!");
-    }
-
-    processes[i] = malloc(strlen(tempString));
-    strcpy(processes[i++], tempString);
-    tempString = strtok(NULL, " &");
-  }
-
-  // Returning an array of strings with commands only
-  return processes;
+  // Trimming the whitespace
+  return trim(rawInput);
 }

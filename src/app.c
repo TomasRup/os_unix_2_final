@@ -2,8 +2,7 @@
 //      Tomas Petras Rupsys
 //
 
-#include <stdlib.h>
-#include "shell.h"
+#include "app.h"
 
 int main(const int argc, const char *argv[]) {
 

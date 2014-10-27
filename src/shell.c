@@ -2,24 +2,26 @@
 //      Tomas Petras Rupsys
 //
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "shell.h"
 
-#include "model/shell_command.h"
-#include "app.h"
-#include "cmd_identifier.h"
-#include "unix_process_adapter.h"
+int processesSize;
+pid_t commonGroupId;
 
 void printHelp() {
 
-  printf("\nAvailable general commands: [help | exit]\n");
-  printf("Available process handling commands: [fg | bg | kill | jobs | \".. & .. &\"]\n");
+  printf("\nCOMMAND\t\t\t\tDESCRIPTION\n");
+  printf("help\t\t\t\tprints this information\n");
+  printf("exit\t\t\t\texit from the application\n");
+  printf("fg [job number]\t\t\tmoves the given job to execute in shell foreground\n");
+  printf("bg [job number]\t\t\tmoves the given job to execute in shell background\n");
+  printf("jobs\t\t\t\tshows a list of jobs which are in the background of this shell\n");
+  printf("[unix command]\t\t\texecutes any UNIX command\n");
+  printf("[unix command] &\t\texecutes any UNIX command in background\n");
 }
 
 void printIntro() {
 
-  printf("\n\nWelcome to background tasks shell!\n");
+  printf("\n\nWelcome to background tasks shell!\n(c) Tomas Petras Rupsys\n");
   printHelp();
   printf("\n");
 }
@@ -40,7 +42,6 @@ void performCommand(ShellCommand command, char *rawInput) {
 
   switch(command) {
     case HELP:
-    case UNKNOWN:
       printHelp();
       break;
     case EXIT:
@@ -51,45 +52,71 @@ void performCommand(ShellCommand command, char *rawInput) {
   }
 }
 
+void initShell() {
+
+  // Nulling the size of processes created
+  processesSize = 0;
+
+  // Setting a single group ID to be used for all shell processes
+  commonGroupId = getpgrp();
+
+  // Initializes signal parameters to ignore actions in comments
+  signal(SIGTTOU, SIG_IGN);	// ttyout
+  signal(SIGTTIN, SIG_IGN);	// ttyin
+  signal(SIGTSTP, SIG_IGN);	// CTRL+Z
+  signal(SIGINT,  SIG_IGN);	// CTRL+C
+
+  // Adding a handler for child signals
+  signal(SIGCHLD, &childSignalHandler);
+}
+
 void startShell() {
 
+  initShell();
   printIntro();
-  char shellInput[INPUT_SIZE];
 
-  while (1) {
-    printf(">");
+  char initialInputChar = '\0';
+  while (initialInputChar != EOF) {
 
-    // Reading a line
-    int inputCounter = 0;
-    char readChar;
+    printf(">> ");
+    initialInputChar = getchar();
 
-    while (inputCounter < INPUT_SIZE) {
-      readChar = getchar();
+    // User hits enter
+    if (initialInputChar == '\n') {
+      continue;
 
-      // User is closing the app
-      if (readChar == EOF) {
-       exitShell();
+    // End of file symbol reached
+    } else if (initialInputChar == EOF) {
+      break;
 
-      // User hits enter
-      } else if (readChar == '\n') {
+    // User is typing a command
+    } else {
+      int inputCounter = 0;
+      char shellInput[INPUT_SIZE];
+      shellInput[inputCounter++] = initialInputChar;
 
-        if (strlen(shellInput) > 0) {
-          // Properly ending the input string
+      char tempChar;
+      while (inputCounter < INPUT_SIZE) {
+        tempChar = getchar();
+
+        // User has finished typing command
+        if (tempChar == '\n') {
+          // Properly ending the input
           shellInput[inputCounter] = '\0';
 
           // Performing the command
           ShellCommand shellCommand = identifyCommand(shellInput);
           performCommand(shellCommand, shellInput);
-        }
+          break;
 
-        break;
+        // Forming command
+        } else {
+          shellInput[inputCounter++] = tempChar;
+        }
       }
 
-      // Adding the read character to the command string
-      shellInput[inputCounter++] = readChar;
+      // Freeing memory for the inputted string
+      memset(shellInput, 0, INPUT_SIZE);
     }
-
-    // Clearing the 'shellInput'
-    memset(shellInput, 0, INPUT_SIZE);
   }
 }
