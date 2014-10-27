@@ -6,7 +6,10 @@ SOURCE_FILES=src/*.c
 OUTPUT_FOLDER=target/
 OUTPUT_FILE=bg_shell
 
-build: $(FOLDER) 
+build: 
 	rm -rf $(OUTPUT_FOLDER)
 	mkdir $(OUTPUT_FOLDER)
 	$(COMPILER) $(COMPILER_ARGUMENTS) $(SOURCE_FILES) -o $(OUTPUT_FOLDER)$(OUTPUT_FILE) 
+
+clean:
+	rm -rf $(OUTPUT_FOLDER) 
